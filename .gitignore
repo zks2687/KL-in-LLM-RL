@@ -9,6 +9,12 @@ archive/
 **/*.tar.gz
 **/playground
 **/wandb
+**/swanlog/
+/verl/models/
+/verl/data/
+/environment-records/
+/verl/benchmark-assets.json
+/verl/bootstrap-assets.json
 *.whl
 plotting/cache/
 plotting/figs/

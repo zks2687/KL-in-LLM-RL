@@ -1,15 +1,15 @@
-# Tested successfully on the hiyouga/verl:ngc-th2.6.0-cu126-vllm0.8.4-flashinfer0.2.2-cxx11abi0 image.
-# It outperforms the Qwen2 7B base model by two percentage points on the test set of GSM8K.
+#!/usr/bin/env bash
+# PRM with old-policy future-KL. See docs for the matching environment.
 #
 # This variant uses the PRM advantage estimator: future-KL is folded into the reward
 # (PRL Eq. (5.4): A_PRL_{i,t} = A_GRPO_i - (1/eta) * sum_{j>=t} (log pi_old - log pi_ref)).
 # We therefore disable both `use_kl_loss` and `use_kl_in_reward` to avoid double-counting KL.
 
-set -x
+set -euo pipefail
 
-export WANDB_ENTITY=
+source "$(dirname -- "${BASH_SOURCE[0]}")/setup_logging.sh"
 
-project_name=rl-kl
+project_name=${PROJECT_NAME:-rl-kl}
 MODEL_NAME=Qwen3-1.7B-Base
 MODEL_PATH=${MODEL_PATH:-Qwen/${MODEL_NAME}}
 DATA_ROOT=${DATA_ROOT:-"~/rl-kl/verl"}
@@ -48,9 +48,10 @@ VAL_N=${VAL_N:-16}
 OFFLOAD=${OFFLOAD:-True}
 
 experiment_name=${MODEL_NAME}-dapo_filter-${adv_estimator}-prmEta${prm_eta}-prmAdv_${prm_adv}-stepSplit_${prm_step_split}-prmKlEstimator_${prm_kl_estimator}-k3FutureBaseline_${prm_k3_future_baseline}-lengthNorm_${prm_length_normalize}-clipLow_${prm_clip_low}-clipHigh_${prm_clip_high}-lr${lr}
+experiment_name=${EXPERIMENT_NAME:-$experiment_name}
 CKPTS_DIR=${CKPTS_DIR:-"${DATA_ROOT}/ckpts/${project_name}/${experiment_name}"}
 
-python3 -m verl.trainer.main_ppo \
+"$PYTHON_BIN" -m verl.trainer.main_ppo \
     algorithm.adv_estimator=$adv_estimator \
     data.train_files="${TRAIN_FILE}" \
     data.val_files="${TEST_FILE}" \
@@ -101,7 +102,7 @@ python3 -m verl.trainer.main_ppo \
     prm.step_split=$prm_step_split \
     critic.enable=False \
     trainer.critic_warmup=0 \
-    trainer.logger='["console","wandb"]' \
+    "trainer.logger=${TRAINER_LOGGER}" \
     trainer.project_name="${project_name}" \
     trainer.experiment_name="${experiment_name}" \
     trainer.n_gpus_per_node=8 \
@@ -112,4 +113,4 @@ python3 -m verl.trainer.main_ppo \
     trainer.total_epochs=100 \
     trainer.val_before_train=True \
     trainer.total_training_steps=3000 \
-    $@
+    "$@"
